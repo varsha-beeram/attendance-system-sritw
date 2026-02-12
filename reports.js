@@ -1,214 +1,235 @@
 import { db, auth } from "./firebase.js";
-import { collection, query, where, getDocs, doc, getDoc, updateDoc }
+import { collection, query, where, getDocs }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { signOut }
 from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+/* =============================
+   LOGOUT
+============================= */
 
 window.logout = function(){
 signOut(auth);
 window.location.href="index.html";
 };
 
-let correctionMode = false;
-let currentDocs = [];
 
-/* LOAD ATTENDANCE */
-window.loadAttendance = async function(){
+/* =============================
+   DOWNLOAD ATTENDANCE
+============================= */
+
+window.downloadAttendance = async function(){
 
 const branch = document.getElementById("branch").value;
-const date = document.getElementById("selectedDate").value;
-const period = document.getElementById("period").value;
+const section = document.getElementById("section").value;
+const type = document.getElementById("downloadType").value;
+const date = document.getElementById("dateInput").value;
+const period = document.getElementById("periodInput").value;
+const month = document.getElementById("monthInput").value;
 
-const attendanceCard = document.getElementById("attendanceCard");
-const tableBody = document.querySelector("#attendanceTable tbody");
-
-attendanceCard.classList.add("hidden");
-tableBody.innerHTML="";
-currentDocs=[];
-
-if(!branch || !date || !period){
-alert("Select branch, date and period");
+if(!branch || !section){
+alert("Select branch and section");
 return;
 }
 
-const attendanceId = date + "_" + branch + "_P" + period;
-const headerDoc = await getDoc(doc(db,"attendanceRecords",attendanceId));
-
-if(!headerDoc.exists()){
-alert("No attendance found for selected date");
+if(!type){
+alert("Select download type");
 return;
 }
 
-const detailsQuery = query(
+let data = [];
+
+/* =============================
+   PERIOD WISE
+============================= */
+
+if(type === "period"){
+
+if(!date || !period){
+alert("Select date and period");
+return;
+}
+
+const q = query(
 collection(db,"attendanceDetails"),
 where("date","==",date),
 where("period","==",Number(period))
 );
 
-const snapshot = await getDocs(detailsQuery);
+const snapshot = await getDocs(q);
 
 snapshot.forEach(docSnap=>{
-currentDocs.push({id:docSnap.id, ...docSnap.data()});
-});
+const d = docSnap.data();
 
-if(currentDocs.length === 0){
-alert("No attendance records found");
-return;
-}
+if(d.branch === branch && d.section === section){
 
-attendanceCard.classList.remove("hidden");
-
-renderTable();
-};
-
-/* RENDER TABLE */
-function renderTable(){
-
-const tableBody = document.querySelector("#attendanceTable tbody");
-tableBody.innerHTML="";
-
-currentDocs.forEach(item=>{
-
-tableBody.innerHTML += `
-<tr>
-<td>${item.studentId}</td>
-<td>-</td>
-<td>
-${correctionMode
-? `<input type="checkbox" data-id="${item.id}" ${item.present?"checked":""}>`
-: item.present
-? `<span class="status-present">Present</span>`
-: `<span class="status-absent">Absent</span>`
-}
-</td>
-</tr>
-`;
-
-});
-
-}
-
-/* CORRECTION MODE */
-window.toggleCorrection = function(){
-correctionMode = !correctionMode;
-document.getElementById("saveBtn").classList.toggle("hidden");
-renderTable();
-};
-
-/* SAVE CORRECTIONS */
-window.saveCorrections = async function(){
-
-const checkboxes = document.querySelectorAll("input[type='checkbox']");
-
-for(const box of checkboxes){
-
-const id = box.getAttribute("data-id");
-const isPresent = box.checked;
-
-await updateDoc(doc(db,"attendanceDetails",id),{
-present: isPresent
-});
-
-}
-
-alert("Corrections saved");
-correctionMode=false;
-document.getElementById("saveBtn").classList.add("hidden");
-loadAttendance();
-};
-
-/* EXPORT DAILY */
-window.exportDaily = function(){
-
-if(currentDocs.length === 0){
-alert("Load attendance first");
-return;
-}
-
-let data=[];
-
-currentDocs.forEach(item=>{
 data.push({
-StudentID:item.studentId,
-Status:item.present ? "Present" : "Absent"
+Date:d.date,
+Period:"P"+d.period,
+Roll:d.roll || d.studentId,
+Status:d.present ? "Present" : "Absent"
 });
+
+}
 });
+
+if(data.length===0){
+alert("No attendance found");
+return;
+}
+
+}
+
+
+/* =============================
+   DATE WISE (ALL PERIODS)
+============================= */
+
+if(type === "date"){
+
+if(!date){
+alert("Select date");
+return;
+}
+
+const q = query(
+collection(db,"attendanceDetails"),
+where("date","==",date)
+);
+
+const snapshot = await getDocs(q);
+
+snapshot.forEach(docSnap=>{
+const d = docSnap.data();
+
+if(d.branch === branch && d.section === section){
+
+data.push({
+Date:d.date,
+Period:"P"+d.period,
+Roll:d.roll || d.studentId,
+Status:d.present ? "Present" : "Absent"
+});
+
+}
+});
+
+if(data.length===0){
+alert("No attendance found");
+return;
+}
+
+}
+
+
+/* =============================
+   MONTHLY
+============================= */
+
+if(type === "month"){
+
+if(!month){
+alert("Select month");
+return;
+}
+
+const q = query(collection(db,"attendanceDetails"));
+const snapshot = await getDocs(q);
+
+snapshot.forEach(docSnap=>{
+const d = docSnap.data();
+
+if(d.branch === branch &&
+   d.section === section &&
+   d.date.startsWith(month)){
+
+data.push({
+Date:d.date,
+Period:"P"+d.period,
+Roll:d.roll || d.studentId,
+Status:d.present ? "Present" : "Absent"
+});
+
+}
+});
+
+if(data.length===0){
+alert("No attendance found for month");
+return;
+}
+
+}
+
+
+/* =============================
+   EXPORT EXCEL
+============================= */
 
 const ws = XLSX.utils.json_to_sheet(data);
 const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, ws, "Daily Attendance");
+XLSX.utils.book_append_sheet(wb, ws, "Attendance");
 
-XLSX.writeFile(wb, "Daily_Attendance.xlsx");
+XLSX.writeFile(wb, branch+"_"+section+"_Attendance.xlsx");
+
 };
 
-/* FULL REPORT */
-window.downloadFullReport = async function(){
+
+
+/* =============================
+   BELOW 75% REPORT
+============================= */
+
+window.downloadBelow75 = async function(){
 
 const branch = document.getElementById("branch").value;
+const section = document.getElementById("section").value;
 
-if(!branch){
-alert("Select branch first");
+if(!branch || !section){
+alert("Select branch and section");
 return;
 }
 
-const q = query(collection(db,"students"),where("branch","==",branch));
+const q = query(
+collection(db,"students"),
+where("branch","==",branch),
+where("section","==",section)
+);
+
 const snapshot = await getDocs(q);
 
-let data=[];
+let data = [];
 
 snapshot.forEach(docSnap=>{
+
 const s = docSnap.data();
-const total = s.totalClasses||0;
-const attended = s.attendedClasses||0;
-const percent = total===0?0:((attended/total)*100).toFixed(2);
+const total = s.totalClasses || 0;
+const attended = s.attendedClasses || 0;
+
+const percent = total===0 ? 0 : (attended/total)*100;
+
+if(percent < 75){
 
 data.push({
 Roll:s.roll,
 Name:s.name,
 Attended:attended,
 Total:total,
-Percentage:percent+"%"
-});
-});
-
-const ws = XLSX.utils.json_to_sheet(data);
-const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, ws, "Full Report");
-XLSX.writeFile(wb, branch+"_Full_Report.xlsx");
-};
-
-/* BELOW 75 */
-window.downloadBelow75 = async function(){
-
-const branch = document.getElementById("branch").value;
-
-if(!branch){
-alert("Select branch first");
-return;
-}
-
-const q = query(collection(db,"students"),where("branch","==",branch));
-const snapshot = await getDocs(q);
-
-let data=[];
-
-snapshot.forEach(docSnap=>{
-const s = docSnap.data();
-const total = s.totalClasses||0;
-const attended = s.attendedClasses||0;
-const percent = total===0?0:(attended/total)*100;
-
-if(percent < 75){
-data.push({
-Roll:s.roll,
-Name:s.name,
 Percentage:percent.toFixed(2)+"%"
 });
+
 }
+
 });
+
+if(data.length===0){
+alert("No students below 75%");
+return;
+}
 
 const ws = XLSX.utils.json_to_sheet(data);
 const wb = XLSX.utils.book_new();
 XLSX.utils.book_append_sheet(wb, ws, "Below 75%");
-XLSX.writeFile(wb, branch+"_Below_75.xlsx");
+
+XLSX.writeFile(wb, branch+"_"+section+"_Below_75.xlsx");
+
 };
