@@ -128,23 +128,6 @@ Every push to GitHub automatically redeploys the project.
 
 ---
 
-# 🎓 Academic Project
-
-Final Year B.Tech CSE (Data Science) Project  
-Year: 2026  
-
----
-
-# 🧠 Learning Outcomes
-
-- Real-time database integration  
-- Role-based authentication  
-- Dynamic UI rendering  
-- Data export to Excel  
-- Analytics dashboard development  
-- Firebase deployment architecture  
-
----
 
 # 👩‍💻 Developed By
 
