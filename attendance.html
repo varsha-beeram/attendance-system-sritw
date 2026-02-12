@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Take Attendance - SRITW</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: #0f172a;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar a {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 10px 0;
+}
+
+.sidebar a:hover {
+  color: white;
+}
+
+.main {
+  flex: 1;
+  padding: 30px;
+  background: #f3f4f6;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  max-width: 700px;
+}
+
+input, select {
+  padding: 8px;
+  margin-bottom: 15px;
+  margin-right: 10px;
+}
+
+button {
+  padding: 8px 15px;
+  background: #1d4ed8;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.student-list {
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h3>SRITW Admin</h3>
+  <a href="admin.html">Dashboard</a>
+  <a href="add_student.html">Add Student</a>
+  <a href="take_attendance.html">Take Attendance</a>
+  <a href="reports.html">Reports</a>
+</div>
+
+<div class="main">
+  <div class="card">
+    <h2>Take Attendance</h2>
+
+    <input id="section" placeholder="Section (A/B/C)">
+    
+    <select id="period">
+      <option value="1">Period 1</option>
+      <option value="2">Period 2</option>
+      <option value="3">Period 3</option>
+      <option value="4">Period 4</option>
+      <option value="5">Period 5</option>
+      <option value="6">Period 6</option>
+      <option value="7">Period 7</option>
+    </select>
+
+    <button onclick="loadStudents()">Load Students</button>
+
+    <div id="students" class="student-list"></div>
+
+    <button onclick="saveAttendance()">Save Attendance</button>
+
+    <p id="msg"></p>
+
+  </div>
+</div>
+
+<script type="module" src="attendance.js"></script>
+
+</body>
+</html>

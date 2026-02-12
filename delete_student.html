@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Manage Students</title>
+
+<style>
+body{
+margin:0;
+font-family:"Segoe UI",sans-serif;
+background:#f4f6f9;
+}
+
+/* Header */
+.header{
+background:#0f172a;
+color:white;
+padding:20px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.header button{
+background:#dc2626;
+border:none;
+color:white;
+padding:8px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+
+/* Container */
+.container{
+padding:40px;
+}
+
+/* Controls */
+.controls{
+display:flex;
+gap:15px;
+margin-bottom:25px;
+flex-wrap:wrap;
+}
+
+select, input{
+padding:10px;
+border-radius:6px;
+border:1px solid #d1d5db;
+}
+
+/* Table */
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+box-shadow:0 10px 25px rgba(0,0,0,0.08);
+}
+
+th, td{
+padding:12px;
+text-align:center;
+border-bottom:1px solid #eee;
+}
+
+th{
+background:#1e3a8a;
+color:white;
+}
+
+input.edit-input{
+width:90%;
+padding:6px;
+border-radius:4px;
+border:1px solid #ccc;
+}
+
+button.save-btn{
+background:#16a34a;
+color:white;
+border:none;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+margin-right:5px;
+}
+
+button.delete-btn{
+background:#dc2626;
+color:white;
+border:none;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.msg{
+margin-top:15px;
+font-weight:500;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h2>Manage Students</h2>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+
+<div class="controls">
+<select id="branch">
+<option value="">Select Branch</option>
+<option value="CSEA">CSEA</option>
+<option value="CSEB">CSEB</option>
+<option value="CSMA">CSMA</option>
+<option value="CSMB">CSMB</option>
+<option value="CSMC">CSMC</option>
+<option value="CSD">CSD</option>
+<option value="CSC">CSC</option>
+<option value="ECE">ECE</option>
+</select>
+
+<input type="text" id="section" placeholder="Enter Section">
+
+<button onclick="loadStudents()">Load Students</button>
+</div>
+
+<table id="studentTable">
+<thead>
+<tr>
+<th>Roll</th>
+<th>Name</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<p id="msg" class="msg"></p>
+
+</div>
+
+<script type="module">
+
+import { db, auth } from "./firebase.js";
+import { collection, query, where, getDocs, deleteDoc, doc, updateDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { signOut } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+window.logout = function(){
+signOut(auth);
+window.location.href="index.html";
+}
+
+window.loadStudents = async function(){
+
+const branch = document.getElementById("branch").value;
+const section = document.getElementById("section").value.trim().toUpperCase();
+const tableBody = document.querySelector("#studentTable tbody");
+
+tableBody.innerHTML = "";
+
+if(!branch || !section){
+alert("Select branch and section");
+return;
+}
+
+const q = query(
+collection(db,"students"),
+where("branch","==",branch),
+where("section","==",section)
+);
+
+const snapshot = await getDocs(q);
+
+if(snapshot.empty){
+alert("No students found");
+return;
+}
+
+snapshot.forEach(docSnap=>{
+const data = docSnap.data();
+
+tableBody.innerHTML += `
+<tr>
+<td>
+<input class="edit-input" id="roll-${docSnap.id}" value="${data.roll}">
+</td>
+<td>
+<input class="edit-input" id="name-${docSnap.id}" value="${data.name}">
+</td>
+<td>
+<button class="save-btn" onclick="updateStudent('${docSnap.id}')">Save</button>
+<button class="delete-btn" onclick="deleteStudent('${docSnap.id}')">Delete</button>
+</td>
+</tr>
+`;
+});
+
+}
+
+window.updateStudent = async function(id){
+
+const newRoll = document.getElementById(`roll-${id}`).value.trim();
+const newName = document.getElementById(`name-${id}`).value.trim();
+
+if(!newRoll || !newName){
+alert("Fields cannot be empty");
+return;
+}
+
+try{
+
+await updateDoc(doc(db,"students",id),{
+roll:newRoll,
+name:newName
+});
+
+document.getElementById("msg").style.color="green";
+document.getElementById("msg").innerText="Student updated successfully!";
+
+}catch(error){
+document.getElementById("msg").style.color="red";
+document.getElementById("msg").innerText="Error updating student";
+}
+
+}
+
+window.deleteStudent = async function(id){
+
+const confirmDelete = confirm("Are you sure you want to delete this student?");
+if(!confirmDelete) return;
+
+try{
+
+await deleteDoc(doc(db,"students",id));
+
+document.getElementById("msg").style.color="green";
+document.getElementById("msg").innerText="Student deleted successfully!";
+
+loadStudents();
+
+}catch(error){
+document.getElementById("msg").style.color="red";
+document.getElementById("msg").innerText="Error deleting student";
+}
+
+}
+
+</script>
+
+</body>
+</html>

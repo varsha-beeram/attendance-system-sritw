@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRITW Faculty Portal</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Inter',sans-serif;
+}
+
+body{
+height:100vh;
+display:flex;
+}
+
+/* LEFT PANEL */
+
+.left{
+flex:1;
+background:linear-gradient(135deg,#0f172a,#1e3a8a);
+color:white;
+display:flex;
+flex-direction:column;
+justify-content:center;
+padding:80px;
+}
+
+.left h1{
+font-size:34px;
+font-weight:700;
+line-height:1.4;
+margin-bottom:20px;
+}
+
+.left p{
+color:#cbd5e1;
+font-size:15px;
+max-width:400px;
+}
+
+/* RIGHT PANEL */
+
+.right{
+flex:1;
+background:#f8fafc;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.card{
+width:420px;
+background:white;
+padding:50px;
+border-radius:16px;
+box-shadow:0 30px 70px rgba(0,0,0,0.15);
+}
+
+.card h2{
+text-align:center;
+margin-bottom:30px;
+font-weight:600;
+color:#111827;
+}
+
+.input-group{
+margin-bottom:20px;
+}
+
+.input-group label{
+display:block;
+margin-bottom:6px;
+font-size:14px;
+color:#374151;
+}
+
+.input-group input{
+width:100%;
+padding:14px;
+border-radius:8px;
+border:1px solid #d1d5db;
+font-size:14px;
+transition:0.3s;
+}
+
+.input-group input:focus{
+border-color:#2563eb;
+outline:none;
+box-shadow:0 0 0 3px rgba(37,99,235,0.15);
+}
+
+button{
+width:100%;
+padding:14px;
+background:#2563eb;
+border:none;
+border-radius:8px;
+color:white;
+font-weight:600;
+font-size:15px;
+cursor:pointer;
+transition:0.3s;
+}
+
+button:hover{
+background:#1e40af;
+transform:translateY(-2px);
+box-shadow:0 10px 25px rgba(37,99,235,0.3);
+}
+
+.error{
+margin-top:15px;
+text-align:center;
+color:red;
+font-size:14px;
+}
+
+.footer{
+text-align:center;
+margin-top:25px;
+font-size:12px;
+color:#6b7280;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="left">
+<h1>
+SUMATHI REDDY<br>
+INSTITUTE OF TECHNOLOGY<br>
+FOR WOMEN
+</h1>
+
+<p>
+Faculty Attendance Management Portal  
+Secure internal academic access system.
+</p>
+</div>
+
+<div class="right">
+<div class="card">
+
+<h2>Faculty Login</h2>
+
+<div class="input-group">
+<label>Email Address</label>
+<input id="email" type="email" placeholder="faculty@sritw.edu">
+</div>
+
+<div class="input-group">
+<label>Password</label>
+<input id="password" type="password" placeholder="Enter password">
+</div>
+
+<button onclick="loginFaculty()">Sign In</button>
+
+<p id="error" class="error"></p>
+
+<div class="footer">
+© 2026 SRITW Attendance System
+</div>
+
+</div>
+</div>
+
+<script type="module" src="faculty-auth.js"></script>
+
+</body>
+</html>

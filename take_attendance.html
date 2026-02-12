@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Take Attendance</title>
+
+<style>
+body{
+margin:0;
+font-family:"Segoe UI",sans-serif;
+background:#f4f6f9;
+}
+
+.header{
+background:#0f172a;
+color:white;
+padding:20px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.header-left{
+display:flex;
+flex-direction:column;
+}
+
+.date{
+font-size:14px;
+color:#93c5fd;
+margin-top:4px;
+}
+
+.header button{
+background:#dc2626;
+border:none;
+color:white;
+padding:8px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.container{
+padding:40px;
+}
+
+.controls{
+display:flex;
+gap:12px;
+flex-wrap:wrap;
+margin-bottom:20px;
+align-items:center;
+}
+
+select,input{
+padding:10px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+button{
+padding:10px 18px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+font-weight:600;
+}
+
+.load-btn{ background:#2563eb; color:white; }
+.sort-btn{ background:#9333ea; color:white; }
+.mark-btn{ background:#16a34a; color:white; }
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+box-shadow:0 10px 25px rgba(0,0,0,0.08);
+}
+
+th,td{
+padding:12px;
+text-align:center;
+border-bottom:1px solid #eee;
+}
+
+th{
+background:#1e3a8a;
+color:white;
+}
+
+.save{
+margin-top:20px;
+background:#2563eb;
+color:white;
+}
+
+.msg{
+margin-top:15px;
+font-weight:600;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<div class="header-left">
+<h2>Take Attendance</h2>
+<div class="date" id="todayDate"></div>
+</div>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+
+<div class="controls">
+
+<select id="branch">
+<option value="">Select Branch</option>
+<option value="CSEA">CSEA</option>
+<option value="CSEB">CSEB</option>
+<option value="CSMA">CSMA</option>
+<option value="CSMB">CSMB</option>
+<option value="CSMC">CSMC</option>
+<option value="CSD">CSD</option>
+<option value="CSC">CSC</option>
+<option value="ECE">ECE</option>
+</select>
+
+<input type="text" id="section" placeholder="Section">
+
+<select id="period">
+<option value="">Select Period</option>
+<option value="1">Period 1</option>
+<option value="2">Period 2</option>
+<option value="3">Period 3</option>
+<option value="4">Period 4</option>
+<option value="5">Period 5</option>
+<option value="6">Period 6</option>
+<option value="7">Period 7</option>
+</select>
+
+<button class="load-btn" onclick="loadStudents()">Load</button>
+<button class="sort-btn" onclick="toggleSort()">Sort</button>
+<button class="mark-btn" onclick="markAllPresent()">Mark All Present</button>
+
+<input type="text" id="searchBox" placeholder="Search..." onkeyup="searchStudent()">
+
+</div>
+
+<table id="attendanceTable">
+<thead>
+<tr>
+<th>S.No</th>
+<th>Roll</th>
+<th>Name</th>
+<th>Present</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<button class="save" onclick="saveAttendance()">Save Attendance</button>
+
+<p id="msg" class="msg"></p>
+
+</div>
+
+<script type="module">
+
+import { db, auth } from "./firebase.js";
+import { collection, query, where, getDocs, updateDoc, doc, setDoc, getDoc }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { signOut }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+window.logout = function(){
+signOut(auth);
+window.location.href="index.html";
+}
+
+/* SHOW TODAY DATE */
+function showTodayDate(){
+const today = new Date();
+const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+document.getElementById("todayDate").innerText =
+"Today: " + today.toLocaleDateString("en-IN", options);
+}
+showTodayDate();
+
+let studentDocs = [];
+let ascending = true;
+
+/* LOAD STUDENTS */
+window.loadStudents = async function(){
+
+const branch = document.getElementById("branch").value;
+const section = document.getElementById("section").value.trim().toUpperCase();
+const period = document.getElementById("period").value;
+const msg = document.getElementById("msg");
+
+msg.innerText = "";
+document.querySelector("#attendanceTable tbody").innerHTML = "";
+
+if(!branch || !section || !period){
+alert("Select branch, section and period");
+return;
+}
+
+const today = new Date().toISOString().split("T")[0];
+const attendanceId = today + "_" + branch + "_" + section + "_P" + period;
+
+const check = await getDoc(doc(db,"attendanceRecords",attendanceId));
+if(check.exists()){
+alert("Attendance already taken for this date and period");
+return;
+}
+
+const q = query(
+collection(db,"students"),
+where("branch","==",branch),
+where("section","==",section)
+);
+
+const snapshot = await getDocs(q);
+studentDocs = snapshot.docs.map(d=>({id:d.id,...d.data()}));
+
+renderTable();
+}
+
+/* RENDER TABLE */
+function renderTable(){
+
+const tableBody = document.querySelector("#attendanceTable tbody");
+tableBody.innerHTML = "";
+
+studentDocs.sort((a,b)=>{
+return ascending
+? a.roll.localeCompare(b.roll)
+: b.roll.localeCompare(a.roll);
+});
+
+studentDocs.forEach((student,index)=>{
+tableBody.innerHTML += `
+<tr>
+<td>${index+1}</td>
+<td>${student.roll}</td>
+<td>${student.name}</td>
+<td><input type="checkbox" data-id="${student.id}"></td>
+</tr>
+`;
+});
+}
+
+window.toggleSort = function(){
+ascending = !ascending;
+renderTable();
+}
+
+window.markAllPresent = function(){
+document.querySelectorAll("input[type='checkbox']")
+.forEach(box=> box.checked = true);
+}
+
+window.searchStudent = function(){
+const value = document.getElementById("searchBox").value.toLowerCase();
+const rows = document.querySelectorAll("#attendanceTable tbody tr");
+
+rows.forEach(row=>{
+row.style.display =
+row.innerText.toLowerCase().includes(value) ? "" : "none";
+});
+}
+
+window.saveAttendance = async function(){
+
+const branch = document.getElementById("branch").value;
+const section = document.getElementById("section").value.trim().toUpperCase();
+const period = document.getElementById("period").value;
+const msg = document.getElementById("msg");
+
+if(!branch || !section || !period){
+alert("Select branch, section and period");
+return;
+}
+
+const today = new Date().toISOString().split("T")[0];
+const attendanceId = today + "_" + branch + "_" + section + "_P" + period;
+
+/* SAVE HEADER */
+await setDoc(doc(db,"attendanceRecords",attendanceId),{
+branch,
+section,
+period,
+date: today,
+timestamp: new Date()
+});
+
+const checkboxes = document.querySelectorAll("input[type='checkbox']");
+
+for(const box of checkboxes){
+
+const studentId = box.getAttribute("data-id");
+const studentRef = doc(db,"students",studentId);
+
+const student = studentDocs.find(s=>s.id===studentId);
+
+let attended = student.attendedClasses || 0;
+let total = student.totalClasses || 0;
+
+total += 1;
+
+let isPresent = false;
+
+if(box.checked){
+attended += 1;
+isPresent = true;
+}
+
+await updateDoc(studentRef,{
+attendedClasses: attended,
+totalClasses: total
+});
+
+/* SAVE PERIOD-WISE */
+await setDoc(
+doc(db,"attendanceDetails", today+"_"+studentId+"_P"+period),
+{
+studentId,
+date: today,
+period: Number(period),
+present: isPresent
+}
+);
+
+}
+
+msg.style.color="green";
+msg.innerText="Attendance saved successfully!";
+}
+
+</script>
+
+</body>
+</html>

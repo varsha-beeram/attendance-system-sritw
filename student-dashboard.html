@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Student Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+margin:0;
+font-family:"Segoe UI",sans-serif;
+background:#f4f6f9;
+}
+
+/* HEADER */
+.header{
+background:#0f172a;
+color:white;
+padding:20px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.header button{
+background:#dc2626;
+border:none;
+color:white;
+padding:8px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+
+/* CONTAINER */
+.container{
+padding:40px;
+}
+
+/* STATS CARDS */
+.stats{
+display:flex;
+gap:20px;
+flex-wrap:wrap;
+margin-bottom:40px;
+}
+
+.card{
+flex:1;
+min-width:200px;
+background:white;
+padding:25px;
+border-radius:12px;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+text-align:center;
+}
+
+.card h3{
+margin:0;
+font-size:28px;
+color:#2563eb;
+}
+
+.card p{
+margin-top:8px;
+color:#555;
+}
+
+/* PERIOD BOX */
+.period-box{
+display:inline-block;
+min-width:45px;
+padding:6px 8px;
+border-radius:6px;
+font-weight:600;
+color:white;
+}
+
+.present{
+background:#16a34a;
+}
+
+.absent{
+background:#dc2626;
+}
+
+.empty{
+color:#aaa;
+}
+
+/* TABLE */
+table{
+width:100%;
+background:white;
+border-collapse:collapse;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+margin-top:20px;
+}
+
+th,td{
+padding:12px;
+text-align:center;
+border-bottom:1px solid #eee;
+}
+
+th{
+background:#1e3a8a;
+color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h2>Student Dashboard</h2>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+
+<!-- STATS -->
+<div class="stats">
+<div class="card">
+<h3 id="totalClasses">0</h3>
+<p>Total Classes</p>
+</div>
+
+<div class="card">
+<h3 id="attended">0</h3>
+<p>Classes Attended</p>
+</div>
+
+<div class="card">
+<h3 id="percentage">0%</h3>
+<p>Attendance %</p>
+</div>
+</div>
+
+<h3>Date-wise & Period-wise Attendance</h3>
+
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>P1</th>
+<th>P2</th>
+<th>P3</th>
+<th>P4</th>
+<th>P5</th>
+<th>P6</th>
+<th>P7</th>
+</tr>
+</thead>
+<tbody id="historyTable"></tbody>
+</table>
+
+</div>
+
+<script type="module">
+
+import { db, auth } from "./firebase.js";
+import { collection, query, where, getDocs }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { onAuthStateChanged, signOut }
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+window.logout = function(){
+signOut(auth);
+window.location.href="index.html";
+}
+
+onAuthStateChanged(auth, async (user)=>{
+
+if(!user){
+window.location.href="student-login.html";
+return;
+}
+
+const studentId = user.uid;
+
+/* LOAD SUMMARY */
+const studentQuery = query(
+collection(db,"students"),
+where("__name__","==",studentId)
+);
+
+const studentSnap = await getDocs(studentQuery);
+
+studentSnap.forEach(doc=>{
+const data = doc.data();
+
+const total = data.totalClasses || 0;
+const attended = data.attendedClasses || 0;
+const percent = total===0?0:((attended/total)*100).toFixed(2);
+
+document.getElementById("totalClasses").innerText = total;
+document.getElementById("attended").innerText = attended;
+document.getElementById("percentage").innerText = percent+"%";
+});
+
+/* LOAD HISTORY */
+loadHistory(studentId);
+
+});
+
+/* LOAD DATE WISE PERIOD WISE */
+async function loadHistory(studentId){
+
+const table = document.getElementById("historyTable");
+table.innerHTML="";
+
+const q = query(
+collection(db,"attendanceDetails"),
+where("studentId","==",studentId)
+);
+
+const snapshot = await getDocs(q);
+
+let attendanceMap = {};
+
+/* GROUP BY DATE */
+snapshot.forEach(doc=>{
+const data = doc.data();
+const date = data.date;
+const period = data.period;
+const present = data.present;
+
+if(!attendanceMap[date]){
+attendanceMap[date] = {};
+}
+
+attendanceMap[date][period] = present;
+});
+
+/* RENDER TABLE */
+Object.keys(attendanceMap).sort().reverse().forEach(date=>{
+
+let row = `<tr><td>${date}</td>`;
+
+for(let i=1;i<=7;i++){
+
+const status = attendanceMap[date][i];
+
+if(status === true){
+row += `<td><span class="period-box present">P${i}</span></td>`;
+}
+else if(status === false){
+row += `<td><span class="period-box absent">P${i}</span></td>`;
+}
+else{
+row += `<td class="empty">-</td>`;
+}
+
+}
+
+row += `</tr>`;
+table.innerHTML += row;
+
+});
+
+}
+
+</script>
+
+</body>
+</html>

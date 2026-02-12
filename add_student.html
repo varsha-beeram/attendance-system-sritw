@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Student</title>
+
+<style>
+body{
+margin:0;
+font-family:"Segoe UI",sans-serif;
+background:#f4f6f9;
+}
+
+.header{
+background:#0f172a;
+color:white;
+padding:20px 40px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.header button{
+background:#dc2626;
+border:none;
+color:white;
+padding:8px 16px;
+border-radius:6px;
+cursor:pointer;
+}
+
+.container{
+display:flex;
+justify-content:center;
+align-items:center;
+height:85vh;
+}
+
+.card{
+background:white;
+padding:40px;
+width:420px;
+border-radius:12px;
+box-shadow:0 10px 30px rgba(0,0,0,0.08);
+}
+
+.card h2{
+margin-bottom:25px;
+text-align:center;
+}
+
+input, select{
+width:100%;
+padding:12px;
+margin-bottom:15px;
+border:1px solid #d1d5db;
+border-radius:6px;
+font-size:14px;
+}
+
+button.add-btn{
+width:100%;
+padding:12px;
+background:#2563eb;
+color:white;
+border:none;
+border-radius:6px;
+font-weight:600;
+cursor:pointer;
+transition:0.3s;
+}
+
+button.add-btn:hover{
+background:#1e40af;
+}
+
+.msg{
+margin-top:15px;
+text-align:center;
+font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+<h2>Faculty Portal</h2>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="container">
+<div class="card">
+
+<h2>Add Student</h2>
+
+<select id="branch">
+<option value="">Select Branch</option>
+<option value="CSEA">CSEA</option>
+<option value="CSEB">CSEB</option>
+<option value="CSMA">CSMA</option>
+<option value="CSMB">CSMB</option>
+<option value="CSMC">CSMC</option>
+<option value="CSD">CSD</option>
+<option value="CSC">CSC</option>
+<option value="ECE">ECE</option>
+</select>
+
+<input type="text" id="section" placeholder="Enter Section (A/B/C)">
+<input type="text" id="name" placeholder="Student Name">
+<input type="text" id="roll" placeholder="Roll Number">
+
+<button class="add-btn" onclick="addStudent()">Add Student</button>
+
+<p id="msg" class="msg"></p>
+
+</div>
+</div>
+
+<script type="module">
+
+import { db, auth } from "./firebase.js";
+import { collection, query, where, getDocs, setDoc, doc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { createUserWithEmailAndPassword, signOut } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+window.logout = function(){
+signOut(auth);
+window.location.href="index.html";
+}
+
+window.addStudent = async function(){
+
+const branch = document.getElementById("branch").value;
+const section = document.getElementById("section").value.trim().toUpperCase();
+const name = document.getElementById("name").value.trim();
+const roll = document.getElementById("roll").value.trim();
+const msg = document.getElementById("msg");
+
+if(!branch || !section || !name || !roll){
+msg.style.color="red";
+msg.innerText="Please fill all fields";
+return;
+}
+
+try{
+
+/* 🔍 CHECK DUPLICATE ROLL */
+const q = query(
+collection(db,"students"),
+where("roll","==",roll),
+where("branch","==",branch),
+where("section","==",section)
+);
+
+const snapshot = await getDocs(q);
+
+if(!snapshot.empty){
+alert("Roll number already exists in this branch and section!");
+return;
+}
+
+/* 🔥 GENERATE EMAIL FROM NAME */
+const cleanName = name.toLowerCase().replace(/\s+/g,'');
+const email = cleanName + "@gmail.com";
+const password = "password";
+
+/* 🔥 CREATE AUTH USER */
+const userCredential = await createUserWithEmailAndPassword(auth,email,password);
+const uid = userCredential.user.uid;
+
+/* 🔥 CREATE STUDENT DOCUMENT */
+await setDoc(doc(db,"students",uid),{
+name,
+roll,
+branch,
+section,
+email,
+attendedClasses:0,
+totalClasses:0
+});
+
+/* 🔥 SIGN OUT (Firebase logs in as student automatically) */
+await signOut(auth);
+
+/* ✅ SHOW LOGIN DETAILS */
+msg.style.color="green";
+msg.innerHTML = `
+Student Created Successfully! <br><br>
+Email: <b>${email}</b><br>
+Password: <b>${password}</b>
+`;
+
+document.getElementById("section").value="";
+document.getElementById("name").value="";
+document.getElementById("roll").value="";
+
+}catch(error){
+msg.style.color="red";
+msg.innerText="Error: " + error.message;
+}
+
+}
+
+</script>
+</body>
+</html>
