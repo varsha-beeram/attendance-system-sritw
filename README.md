@@ -8,7 +8,7 @@ Built using Firebase + HTML + CSS + JavaScript.
 ---
 
 ## 🚀 Live Demo
-(Add your Netlify link here after deployment)
+
 
 https://attendance-system-sritw.netlify.app/
 
