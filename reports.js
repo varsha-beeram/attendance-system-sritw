@@ -7,17 +7,15 @@ from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 /* =============================
    LOGOUT
 ============================= */
-
 window.logout = function(){
-signOut(auth);
-window.location.href="index.html";
+    signOut(auth);
+    window.location.href="index.html";
 };
 
 
 /* =============================
    DOWNLOAD ATTENDANCE
 ============================= */
-
 window.downloadAttendance = async function(){
 
 const branch = document.getElementById("branch").value;
@@ -28,136 +26,104 @@ const period = document.getElementById("periodInput").value;
 const month = document.getElementById("monthInput").value;
 
 if(!branch || !section){
-alert("Select branch and section");
-return;
+    alert("Select branch and section");
+    return;
 }
 
 if(!type){
-alert("Select download type");
-return;
+    alert("Select download type");
+    return;
 }
+
+/* =============================
+   STEP 1: GET STUDENTS
+============================= */
+const studentQuery = query(
+    collection(db,"students"),
+    where("branch","==",branch),
+    where("section","==",section)
+);
+
+const studentSnap = await getDocs(studentQuery);
+
+let studentIds = [];
+let studentMap = {};
+
+studentSnap.forEach(doc=>{
+    studentIds.push(doc.id);
+    studentMap[doc.id] = doc.data();
+});
+
+if(studentIds.length === 0){
+    alert("No students found");
+    return;
+}
+
+
+/* =============================
+   STEP 2: GET ATTENDANCE DETAILS
+============================= */
+
+const attendanceSnap = await getDocs(collection(db,"attendanceDetails"));
 
 let data = [];
 
-/* =============================
-   PERIOD WISE
-============================= */
+attendanceSnap.forEach(docSnap=>{
 
-if(type === "period"){
+    const d = docSnap.data();
 
-if(!date || !period){
-alert("Select date and period");
-return;
-}
+    if(!studentIds.includes(d.studentId)) return;
 
-const q = query(
-collection(db,"attendanceDetails"),
-where("date","==",date),
-where("period","==",Number(period))
-);
+    /* PERIOD WISE */
+    if(type === "period"){
+        if(!date || !period) return;
 
-const snapshot = await getDocs(q);
+        if(d.date === date && d.period === Number(period)){
+            data.push({
+                Date: d.date,
+                Period: "P"+d.period,
+                Roll: studentMap[d.studentId]?.roll || d.studentId,
+                Name: studentMap[d.studentId]?.name || "",
+                Status: d.present ? "Present" : "Absent"
+            });
+        }
+    }
 
-snapshot.forEach(docSnap=>{
-const d = docSnap.data();
+    /* DATE WISE */
+    if(type === "date"){
+        if(!date) return;
 
-if(d.branch === branch && d.section === section){
+        if(d.date === date){
+            data.push({
+                Date: d.date,
+                Period: "P"+d.period,
+                Roll: studentMap[d.studentId]?.roll || d.studentId,
+                Name: studentMap[d.studentId]?.name || "",
+                Status: d.present ? "Present" : "Absent"
+            });
+        }
+    }
 
-data.push({
-Date:d.date,
-Period:"P"+d.period,
-Roll:d.roll || d.studentId,
-Status:d.present ? "Present" : "Absent"
+    /* MONTH WISE */
+    if(type === "month"){
+        if(!month) return;
+
+        if(d.date.startsWith(month)){
+            data.push({
+                Date: d.date,
+                Period: "P"+d.period,
+                Roll: studentMap[d.studentId]?.roll || d.studentId,
+                Name: studentMap[d.studentId]?.name || "",
+                Status: d.present ? "Present" : "Absent"
+            });
+        }
+    }
+
 });
 
-}
-});
-
-if(data.length===0){
-alert("No attendance found");
-return;
-}
-
-}
-
-
-/* =============================
-   DATE WISE (ALL PERIODS)
-============================= */
-
-if(type === "date"){
-
-if(!date){
-alert("Select date");
-return;
-}
-
-const q = query(
-collection(db,"attendanceDetails"),
-where("date","==",date)
-);
-
-const snapshot = await getDocs(q);
-
-snapshot.forEach(docSnap=>{
-const d = docSnap.data();
-
-if(d.branch === branch && d.section === section){
-
-data.push({
-Date:d.date,
-Period:"P"+d.period,
-Roll:d.roll || d.studentId,
-Status:d.present ? "Present" : "Absent"
-});
-
-}
-});
-
-if(data.length===0){
-alert("No attendance found");
-return;
-}
-
-}
-
-
-/* =============================
-   MONTHLY
-============================= */
-
-if(type === "month"){
-
-if(!month){
-alert("Select month");
-return;
-}
-
-const q = query(collection(db,"attendanceDetails"));
-const snapshot = await getDocs(q);
-
-snapshot.forEach(docSnap=>{
-const d = docSnap.data();
-
-if(d.branch === branch &&
-   d.section === section &&
-   d.date.startsWith(month)){
-
-data.push({
-Date:d.date,
-Period:"P"+d.period,
-Roll:d.roll || d.studentId,
-Status:d.present ? "Present" : "Absent"
-});
-
-}
-});
-
-if(data.length===0){
-alert("No attendance found for month");
-return;
-}
-
+if(data.length === 0){
+    alert("No attendance found");
+    return;
 }
 
 
@@ -185,14 +151,14 @@ const branch = document.getElementById("branch").value;
 const section = document.getElementById("section").value;
 
 if(!branch || !section){
-alert("Select branch and section");
-return;
+    alert("Select branch and section");
+    return;
 }
 
 const q = query(
-collection(db,"students"),
-where("branch","==",branch),
-where("section","==",section)
+    collection(db,"students"),
+    where("branch","==",branch),
+    where("section","==",section)
 );
 
 const snapshot = await getDocs(q);
@@ -201,29 +167,27 @@ let data = [];
 
 snapshot.forEach(docSnap=>{
 
-const s = docSnap.data();
-const total = s.totalClasses || 0;
-const attended = s.attendedClasses || 0;
+    const s = docSnap.data();
+    const total = s.totalClasses || 0;
+    const attended = s.attendedClasses || 0;
 
-const percent = total===0 ? 0 : (attended/total)*100;
+    const percent = total===0 ? 0 : (attended/total)*100;
 
-if(percent < 75){
-
-data.push({
-Roll:s.roll,
-Name:s.name,
-Attended:attended,
-Total:total,
-Percentage:percent.toFixed(2)+"%"
-});
-
-}
+    if(percent < 75){
+        data.push({
+            Roll: s.roll,
+            Name: s.name,
+            Attended: attended,
+            Total: total,
+            Percentage: percent.toFixed(2)+"%"
+        });
+    }
 
 });
 
 if(data.length===0){
-alert("No students below 75%");
-return;
+    alert("No students below 75%");
+    return;
 }
 
 const ws = XLSX.utils.json_to_sheet(data);
